@@ -14,6 +14,7 @@ interface CachedSdk {
 export class SdkService {
   private readonly logger = new Logger(SdkService.name);
   private readonly sdkCache: LRUCache<string, CachedSdk>;
+  private readonly creationPromises = new Map<string, Promise<ClientSdkType>>();
   private readonly baseUrlWs: string;
   private readonly baseUrlApi: string;
   private readonly brokerId: number;
@@ -72,14 +73,24 @@ export class SdkService {
     if (cachedEntry && cachedEntry.passwordHash !== passwordHash) {
         this.logger.log(`Password changed for login "${login}". Recreating SDK.`);
         // Potentially close old SDK instance if necessary and SDK provides a method
-        // await cachedEntry.sdk.close(); 
+        // await cachedEntry.sdk.close();
         this.sdkCache.delete(login);
     }
-    
+    if (this.creationPromises.has(login)) {
+      this.logger.log(`Waiting for ongoing SDK creation for login "${login}"`);
+      return this.creationPromises.get(login)!;
+    }
+
     this.logger.log(`Creating new SDK instance for login "${login}"`);
-    const newSdk = await this.createSdkInstance(login, password);
-    this.sdkCache.set(login, { sdk: newSdk, passwordHash });
-    return newSdk;
+    const creationPromise = this.createSdkInstance(login, password);
+    this.creationPromises.set(login, creationPromise);
+    try {
+      const newSdk = await creationPromise;
+      this.sdkCache.set(login, { sdk: newSdk, passwordHash });
+      return newSdk;
+    } finally {
+      this.creationPromises.delete(login);
+    }
   }
 
   removeSdkFromCache(login: string): boolean {
