@@ -14,7 +14,8 @@ export class OrderController {
   @HttpCode(HttpStatus.OK)
   async getOrder(@Query() getOrderDto: GetOrderQueryDto) {
     const sdk = await this.sdkService.getSdk(getOrderDto.login, getOrderDto.password);
-    const orderDetails = await this.orderService.getOrderDetails(sdk, getOrderDto.orderId);
+    const orderId = Number(getOrderDto.orderId);
+    const orderDetails = await this.orderService.getOrderDetails(sdk, orderId);
     return orderDetails; // The service already returns the cleaned payload
   }
 }

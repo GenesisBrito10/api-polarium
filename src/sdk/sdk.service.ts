@@ -1,11 +1,11 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LRUCache } from 'lru-cache';
+import  LRUCache  from 'lru-cache';
 import { createHash } from 'crypto';
 import type {
   ClientSdk as ClientSdkType,
 } from '@quadcode-tech/client-sdk-js';
-import type SdkModule from '@quadcode-tech/client-sdk-js';
+
 
 interface CachedSdk {
   sdk: ClientSdkType; 
@@ -21,7 +21,7 @@ export class SdkService {
   private readonly baseUrlWs: string;
   private readonly baseUrlApi: string;
   private readonly brokerId: number;
-  private sdkModulePromise: Promise<typeof SdkModule> | null = null;
+  private sdkModulePromise: Promise<typeof import('@quadcode-tech/client-sdk-js')> | null = null;
 
   private loadSdkModule() {
     if (!this.sdkModulePromise) {
@@ -34,9 +34,21 @@ export class SdkService {
     return createHash('sha256').update(password).digest('hex');
   }
 
-  private hashPassword(password: string): string {
-    return createHash('sha256').update(password).digest('hex');
+  private async warmUpSdk(sdk: ClientSdkType): Promise<void> {
+    try {
+      await Promise.all([
+        sdk.balances().catch(() => undefined),
+        sdk.digitalOptions().catch(() => undefined),
+      ]);
+    } catch (err) {
+      this.logger.warn(
+        `SDK warm-up failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
+
+
+ 
 
   constructor(private configService: ConfigService) {
     const baseUrlWs = this.configService.get<string>('sdk.baseUrlWs');
@@ -70,6 +82,7 @@ export class SdkService {
         this.brokerId,
         new LoginPasswordAuthMethod(this.baseUrlApi, login, password),
       );
+      await this.warmUpSdk(sdk);
       this.logger.log(`SDK created successfully for login "${login}"`);
       return sdk;
     } catch (error) {

@@ -41,42 +41,14 @@ export class DigitalService {
   }
 
 
-
-  private async ensurePreloaded(sdk: ClientSdkType): Promise<void> {
-    let preload = this.preloadMap.get(sdk);
-    if (!preload) {
-      preload = this.preloadDigitalOptions(sdk);
-      this.preloadMap.set(sdk, preload);
-    }
-    return preload;
-  }
-
-  private async preloadDigitalOptions(sdk: ClientSdkType): Promise<void> {
-    try {
-      const digitalOptions = await sdk.digitalOptions();
-      const underlyings = digitalOptions.getUnderlyingsAvailableForTradingAt(new Date());
-      await Promise.all(
-        underlyings.map(async underlying => {
-          try {
-            await underlying.instruments();
-          } catch (error) {
-            this.logger.warn(`Failed to preload instruments for ${underlying.name}: ${error instanceof Error ? error.message : String(error)}`);
-          }
-        }),
-      );
-    } catch (error) {
-      this.logger.warn(`Failed to preload digital options cache: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
   async buyOption(sdk: ClientSdkType, buyDigitalDto: BuyDigitalDto): Promise<any> {
     const { assetName, operationValue, direction, account_type } = buyDigitalDto;
 
     this.logger.log(`Attempting to buy digital option for asset "${assetName}", value: ${operationValue}, direction: ${direction}, account: ${account_type}`);
 
     try {
-      
-      const { BalanceType, DigitalOptionsDirection } =  await import('@quadcode-tech/client-sdk-js');
+
+      const { BalanceType, DigitalOptionsDirection } = await import('@quadcode-tech/client-sdk-js');
 
       await this.ensurePreloaded(sdk);
 
@@ -104,8 +76,7 @@ export class DigitalService {
         this.logger.warn(`Instrument (period 60s) for digital asset "${assetName}" not found.`);
         throw new NotFoundException(`Instrumento (período 60s) para o ativo "${assetName}" não encontrado`);
       }
-      const saoPauloDate = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-      this.logger.log(`Data/hora em São Paulo: ${saoPauloDate}`);
+
       const sdkBalanceType = account_type === AppAccountType.Real ? BalanceType.Real : BalanceType.Demo;
       const balance = balancesInstance.getBalances().find(b => b.type === sdkBalanceType);
 
@@ -120,8 +91,8 @@ export class DigitalService {
       }
 
       const sdkDirection = mapTradeDirection(direction, DigitalOptionsDirection);
-      
-      this.logger.log(`Placing digital option order for instrument ID: ${availableInstrument.assetId}, direction: ${sdkDirection}`);
+
+      //this.logger.log(`Placing digital option order for instrument ID: ${availableInstrument.assetId}, direction: ${sdkDirection}`);
       const order = await digitalOptions.buySpotStrike(
         availableInstrument,
         sdkDirection,

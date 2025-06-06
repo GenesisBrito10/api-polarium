@@ -52,9 +52,9 @@ export class OrderService {
     };
   }
 
-  async getOrderDetails(sdk: ClientSdkType, orderId: string): Promise<any> {
+  async getOrderDetails(sdk: ClientSdkType, orderId: number): Promise<any> {
     this.logger.log(`Attempting to get details for order ID: ${orderId}`);
-    const numericOrderId = Number(orderId);
+    const numericOrderId =orderId;
     if (isNaN(numericOrderId)) {
         throw new NotFoundException(`Order ID "${orderId}" is not a valid number.`);
     }
