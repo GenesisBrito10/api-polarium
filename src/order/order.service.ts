@@ -25,29 +25,16 @@ export class OrderService {
 
   private cleanPositionPayload(position: PositionSdkType) {
     return {
-      externalId: position.externalId,
-      internalId: position.internalId,
+    
       activeId: position.activeId,
-      balanceId: position.balanceId,
-      closeProfit: position.closeProfit ?? null,
       closeQuote: position.closeQuote ?? null,
-      closeReason: position.closeReason ?? null,
       currentQuote: position.currentQuote,
       closeTime: position.closeTime ? position.closeTime.toISOString() : null,
-      expectedProfit: position.expectedProfit,
-      instrumentType: position.instrumentType,
       invest: position.invest,
       openQuote: position.openQuote,
       openTime: position.openTime ? position.openTime.toISOString() : null,
       pnl: position.pnl,
-      pnlNet: position.pnlNet,
-      pnlRealized: position.pnlRealized ?? null,
-      quoteTimestamp: position.quoteTimestamp ? position.quoteTimestamp.toISOString() : null,
-      currentQuoteTimestamp: position.currentQuoteTimestamp ? position.currentQuoteTimestamp.toISOString() : null,
       status: position.status,
-      userId: position.userId,
-      sellProfit: position.sellProfit,
-      orderIds: position.orderIds,
       expirationTime: position.expirationTime ? position.expirationTime.toISOString() : null,
       direction: position.direction,
       active: position.active ? { 
@@ -58,7 +45,7 @@ export class OrderService {
     };
   }
 
-  async getOrderDetails(sdk: ClientSdkType, orderId: number): Promise<any> {
+  async getOrderDetails(sdk: ClientSdkType, email:string,orderId: number): Promise<any> {
     this.logger.log(`Attempting to get details for order ID: ${orderId}`);
     const numericOrderId =orderId;
     if (isNaN(numericOrderId)) {
@@ -100,7 +87,7 @@ export class OrderService {
             }
             const payload = this.cleanPositionPayload(position);
             this.orderResultModel
-              .create({ orderId: numericOrderId, payload })
+              .create({ email: email, orderId: numericOrderId, payload })
               .catch(err =>
                 this.logger.error(
                   `Failed to store order result: ${err instanceof Error ? err.message : String(err)}`,

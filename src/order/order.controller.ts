@@ -10,12 +10,12 @@ export class OrderController {
     private readonly sdkService: SdkService,
   ) {}
 
-  @Get() // Route will be /api/order?login=...&password=...&orderId=...
+  @Get() // Route will be /api/order?email=...&password=...&orderId=...
   @HttpCode(HttpStatus.OK)
   async getOrder(@Query() getOrderDto: GetOrderQueryDto) {
-    const sdk = await this.sdkService.getSdk(getOrderDto.login, getOrderDto.password);
+    const sdk = await this.sdkService.getSdk(getOrderDto.email, getOrderDto.password);
     const orderId = Number(getOrderDto.orderId);
-    const orderDetails = await this.orderService.getOrderDetails(sdk, orderId);
-    return orderDetails; // The service already returns the cleaned payload
+    const orderDetails = await this.orderService.getOrderDetails(sdk, getOrderDto.email,orderId);
+    return orderDetails; 
   }
 }
