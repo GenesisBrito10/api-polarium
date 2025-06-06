@@ -2,11 +2,16 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-import compression from 'compression';
+import compress from '@fastify/compress';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter(),
+  );
+  await app.register(compress);
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');
@@ -21,13 +26,11 @@ async function bootstrap() {
     }),
   );
 
-  app.use(compression()); // Enable response compression
-
   // Configure CORS if needed
   // app.enableCors();
 
-  await app.listen(port);
+  await app.listen({ port, host: '0.0.0.0' });
   Logger.log(`Server running on http://localhost:${port}/api`, 'Bootstrap');
   Logger.log(`Current environment: ${nodeEnv}`, 'Bootstrap');
 }
-bootstrap();""
+bootstrap();
