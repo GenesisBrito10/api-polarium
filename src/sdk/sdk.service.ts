@@ -1,6 +1,6 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import  LRUCache  from 'lru-cache';
+import  { LRUCache }  from 'lru-cache';
 import { createHash } from 'crypto';
 import type {
   ClientSdk as ClientSdkType,
