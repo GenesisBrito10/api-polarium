@@ -41,6 +41,7 @@ export class DigitalService {
   }
 
 
+
   private async ensurePreloaded(sdk: ClientSdkType): Promise<void> {
     let preload = this.preloadMap.get(sdk);
     if (!preload) {
@@ -97,8 +98,7 @@ export class DigitalService {
       const availableInstrument = instruments
         .getAvailableForBuyAt(new Date())
 
-        .find(instrument => instrument.period === 60);
-
+        .find(instrument => instrument.period === DigitalService.OPTION_PERIOD);
 
       if (!availableInstrument) {
         this.logger.warn(`Instrument (period 60s) for digital asset "${assetName}" not found.`);
