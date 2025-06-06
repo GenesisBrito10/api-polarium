@@ -1,5 +1,7 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { LRUCache } from 'lru-cache';
+import { createHash } from 'crypto';
 import type { ClientSdk as ClientSdkType } from '@quadcode-tech/client-sdk-js';
 
 interface CachedSdk {
@@ -11,7 +13,7 @@ interface CachedSdk {
 @Injectable()
 export class SdkService {
   private readonly logger = new Logger(SdkService.name);
-  private readonly sdkCache = new Map<string, CachedSdk>();
+  private readonly sdkCache: LRUCache<string, CachedSdk>;
   private readonly baseUrlWs: string;
   private readonly baseUrlApi: string;
   private readonly brokerId: number;
@@ -20,6 +22,8 @@ export class SdkService {
     const baseUrlWs = this.configService.get<string>('sdk.baseUrlWs');
     const baseUrlApi = this.configService.get<string>('sdk.baseUrlApi');
     const brokerId = this.configService.get<number>('sdk.brokerId');
+    const ttlMs = this.configService.get<number>('sdkCacheTtlMs') ?? 60 * 60 * 1000;
+    this.sdkCache = new LRUCache<string, CachedSdk>({ max: 50, ttl: ttlMs });
 
     if (!baseUrlWs || !baseUrlApi || !brokerId) {
         this.logger.error('SDK base URLs or Broker ID are not configured. Check your .env file.');
@@ -57,14 +61,15 @@ export class SdkService {
   }
 
   async getSdk(login: string, password: string): Promise<ClientSdkType> {
+    const passwordHash = createHash('sha256').update(password).digest('hex');
     const cachedEntry = this.sdkCache.get(login);
 
-    if (cachedEntry && cachedEntry.passwordHash === password) {
+    if (cachedEntry && cachedEntry.passwordHash === passwordHash) {
       this.logger.log(`Using cached SDK for login "${login}"`);
       return cachedEntry.sdk;
     }
 
-    if (cachedEntry && cachedEntry.passwordHash !== password) {
+    if (cachedEntry && cachedEntry.passwordHash !== passwordHash) {
         this.logger.log(`Password changed for login "${login}". Recreating SDK.`);
         // Potentially close old SDK instance if necessary and SDK provides a method
         // await cachedEntry.sdk.close(); 
@@ -73,7 +78,7 @@ export class SdkService {
     
     this.logger.log(`Creating new SDK instance for login "${login}"`);
     const newSdk = await this.createSdkInstance(login, password);
-    this.sdkCache.set(login, { sdk: newSdk, passwordHash: password });
+    this.sdkCache.set(login, { sdk: newSdk, passwordHash });
     return newSdk;
   }
 

@@ -6,5 +6,6 @@ export default () => ({
     baseUrlApi: process.env.BASE_URL_API || 'https://api.trade.polariumbroker.com',
     brokerId: parseInt(process.env.BROKER_ID ?? '82', 10),
   },
+  sdkCacheTtlMs: parseInt(process.env.SDK_CACHE_TTL_MS ?? '3600000', 10),
   orderSubscriptionTimeout: parseInt(process.env.ORDER_SUBSCRIPTION_TIMEOUT ?? '65000', 10),
 });
