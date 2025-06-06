@@ -19,6 +19,10 @@ export class SdkService {
   private readonly baseUrlApi: string;
   private readonly brokerId: number;
 
+  private hashPassword(password: string): string {
+    return createHash('sha256').update(password).digest('hex');
+  }
+
   constructor(private configService: ConfigService) {
     const baseUrlWs = this.configService.get<string>('sdk.baseUrlWs');
     const baseUrlApi = this.configService.get<string>('sdk.baseUrlApi');
@@ -27,18 +31,13 @@ export class SdkService {
     this.sdkCache = new LRUCache<string, CachedSdk>({ max: 50, ttl: ttlMs });
 
     if (!baseUrlWs || !baseUrlApi || !brokerId) {
-        this.logger.error('SDK base URLs or Broker ID are not configured. Check your .env file.');
-        throw new InternalServerErrorException('SDK configuration is missing.');
+      this.logger.error('SDK base URLs or Broker ID are not configured. Check your .env file.');
+      throw new InternalServerErrorException('SDK configuration is missing.');
     }
 
     this.baseUrlWs = baseUrlWs;
     this.baseUrlApi = baseUrlApi;
     this.brokerId = brokerId;
-
-    if (!this.baseUrlWs || !this.baseUrlApi || !this.brokerId) {
-        this.logger.error('SDK base URLs or Broker ID are not configured. Check your .env file.');
-        throw new InternalServerErrorException('SDK configuration is missing.');
-    }
   }
 
   private async createSdkInstance(login: string, password: string): Promise<ClientSdkType> {
@@ -62,7 +61,7 @@ export class SdkService {
   }
 
   async getSdk(login: string, password: string): Promise<ClientSdkType> {
-    const passwordHash = createHash('sha256').update(password).digest('hex');
+    const passwordHash = this.hashPassword(password);
     const cachedEntry = this.sdkCache.get(login);
 
     if (cachedEntry && cachedEntry.passwordHash === passwordHash) {

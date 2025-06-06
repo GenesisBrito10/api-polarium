@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import type { ClientSdk as ClientSdkType, Balance as BalanceSdkType } from '@quadcode-tech/client-sdk-js';
+import { mapTradeDirection } from '../utils/map-direction.util.js';
 import { BuyDigitalDto } from './dto/buy-digital.dto.js';
 import { AccountType as AppAccountType } from '../../shared/enums/account-type.enum.js';
 import { TradeDirection } from '../../shared/enums/direction.enum.js';
@@ -8,6 +9,9 @@ import { TradeDirection } from '../../shared/enums/direction.enum.js';
 export class DigitalService {
   private readonly logger = new Logger(DigitalService.name);
   private readonly preloadMap = new WeakMap<ClientSdkType, Promise<void>>();
+
+  private static readonly OPTION_PERIOD = 60;
+
 
   private async ensurePreloaded(sdk: ClientSdkType): Promise<void> {
     let preload = this.preloadMap.get(sdk);
@@ -36,7 +40,35 @@ export class DigitalService {
     }
   }
 
-  async buyOption(sdk: ClientSdkType, buyDigitalDto: BuyDigitalDto) {
+
+  private async ensurePreloaded(sdk: ClientSdkType): Promise<void> {
+    let preload = this.preloadMap.get(sdk);
+    if (!preload) {
+      preload = this.preloadDigitalOptions(sdk);
+      this.preloadMap.set(sdk, preload);
+    }
+    return preload;
+  }
+
+  private async preloadDigitalOptions(sdk: ClientSdkType): Promise<void> {
+    try {
+      const digitalOptions = await sdk.digitalOptions();
+      const underlyings = digitalOptions.getUnderlyingsAvailableForTradingAt(new Date());
+      await Promise.all(
+        underlyings.map(async underlying => {
+          try {
+            await underlying.instruments();
+          } catch (error) {
+            this.logger.warn(`Failed to preload instruments for ${underlying.name}: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }),
+      );
+    } catch (error) {
+      this.logger.warn(`Failed to preload digital options cache: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async buyOption(sdk: ClientSdkType, buyDigitalDto: BuyDigitalDto): Promise<any> {
     const { assetName, operationValue, direction, account_type } = buyDigitalDto;
 
     this.logger.log(`Attempting to buy digital option for asset "${assetName}", value: ${operationValue}, direction: ${direction}, account: ${account_type}`);
@@ -64,7 +96,9 @@ export class DigitalService {
       const instruments = await availableUnderlying.instruments();
       const availableInstrument = instruments
         .getAvailableForBuyAt(new Date())
+
         .find(instrument => instrument.period === 60);
+
 
       if (!availableInstrument) {
         this.logger.warn(`Instrument (period 60s) for digital asset "${assetName}" not found.`);
@@ -85,7 +119,7 @@ export class DigitalService {
         throw new BadRequestException(`Saldo insuficiente para a operação. Disponível: ${balance.available}, Necessário: ${operationValue}`);
       }
 
-      const sdkDirection = direction === TradeDirection.Call ? DigitalOptionsDirection.Call : DigitalOptionsDirection.Put;
+      const sdkDirection = mapTradeDirection(direction, DigitalOptionsDirection);
       
       this.logger.log(`Placing digital option order for instrument ID: ${availableInstrument.assetId}, direction: ${sdkDirection}`);
       const order = await digitalOptions.buySpotStrike(
