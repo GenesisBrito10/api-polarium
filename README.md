@@ -31,6 +31,11 @@
 $ npm install
 ```
 
+### Environment variables
+
+Use `SDK_CACHE_TTL_MS` to control how long SDK instances stay cached.
+The default is one hour (3600000ms).
+
 ## Compile and run the project
 
 ```bash
