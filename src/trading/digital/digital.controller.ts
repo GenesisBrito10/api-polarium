@@ -13,7 +13,7 @@ export class DigitalController {
   @Post('buy')
   @HttpCode(HttpStatus.CREATED)
   async buyDigitalOption(@Body() buyDigitalDto: BuyDigitalDto) {
-    const sdk = await this.sdkService.getSdk(buyDigitalDto.login, buyDigitalDto.password);
+    const sdk = await this.sdkService.getSdk(buyDigitalDto.email, buyDigitalDto.password);
     const order = await this.digitalService.buyOption(sdk, buyDigitalDto);
     return { message: 'Digital option purchase initiated.', order };
   }

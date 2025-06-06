@@ -1,9 +1,9 @@
 import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 export class SdkCredentialsDto {
-  @IsEmail({}, { message: 'Login deve ser um e-mail válido' })
-  @IsNotEmpty({ message: 'Login é obrigatório' })
-  login: string;
+  @IsEmail({}, { message: 'Deve ser um e-mail válido' })
+  @IsNotEmpty({ message: 'Email é obrigatório' })
+  email: string;
 
   @IsString({ message: 'Password deve ser uma string' })
   @IsNotEmpty({ message: 'Password é obrigatório' })

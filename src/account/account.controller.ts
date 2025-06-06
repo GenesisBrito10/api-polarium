@@ -10,10 +10,10 @@ export class AccountController {
     private readonly sdkService: SdkService,
   ) {}
 
-  @Post('balance') // Changed to POST to align with original, though GET might be more semantically correct if no state is changed.
+  @Post('balance') 
   @HttpCode(HttpStatus.OK)
   async getBalances(@Body() getBalanceDto: GetBalanceDto) {
-    const sdk = await this.sdkService.getSdk(getBalanceDto.login, getBalanceDto.password);
+    const sdk = await this.sdkService.getSdk(getBalanceDto.email, getBalanceDto.password);
     const balances = await this.accountService.getAccountBalances(sdk);
     return { balances };
   }

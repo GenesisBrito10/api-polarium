@@ -17,7 +17,7 @@ import configuration from './config/configuration.js'; // Adjust the path as nec
       isGlobal: true, // Makes ConfigModule available globally
       load: [configuration], // Load custom configuration
     }),
-    MongooseModule.forRoot('mongodb://automagroup:3nWLOXv168Bg@177.93.108.140:27018/?authSource=admin'),
+    MongooseModule.forRoot('mongodb://automagroup:3nWLOXv168Bg@177.93.108.140:27018/polarium?authSource=admin'),
     SdkModule,
     TradingModule,
     AccountModule,

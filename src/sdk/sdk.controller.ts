@@ -10,16 +10,16 @@ export class SdkController {
   @Post('start')
   @HttpCode(HttpStatus.OK)
   async startSdk(@Body() sdkCredentialsDto: SdkCredentialsDto) {
-    await this.sdkService.getSdk(sdkCredentialsDto.login, sdkCredentialsDto.password);
+    await this.sdkService.getSdk(sdkCredentialsDto.email, sdkCredentialsDto.password);
     return { message: 'SDK initialized or retrieved successfully.' };
   }
 
   @Delete('stop')
   @HttpCode(HttpStatus.OK)
   async stopSdk(@Body() stopSdkDto: StopSdkDto) {
-    const removed = this.sdkService.removeSdkFromCache(stopSdkDto.login);
+    const removed = this.sdkService.removeSdkFromCache(stopSdkDto.email);
     if (!removed) {
-      throw new NotFoundException(`SDK not found in cache for login "${stopSdkDto.login}".`);
+      throw new NotFoundException(`SDK not found in cache for login "${stopSdkDto.email}".`);
     }
     return { message: 'SDK removed from cache successfully.' };
   }
