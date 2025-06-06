@@ -34,6 +34,10 @@ export class SdkService {
     return createHash('sha256').update(password).digest('hex');
   }
 
+  private hashPassword(password: string): string {
+    return createHash('sha256').update(password).digest('hex');
+  }
+
   constructor(private configService: ConfigService) {
     const baseUrlWs = this.configService.get<string>('sdk.baseUrlWs');
     const baseUrlApi = this.configService.get<string>('sdk.baseUrlApi');
@@ -54,6 +58,7 @@ export class SdkService {
     this.loadSdkModule().catch(err =>
       this.logger.warn(`Failed to preload SDK module: ${err instanceof Error ? err.message : String(err)}`),
     );
+
   }
 
   private async createSdkInstance(login: string, password: string): Promise<ClientSdkType> {

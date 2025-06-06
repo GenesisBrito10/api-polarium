@@ -9,7 +9,38 @@ import { TradeDirection } from '../../shared/enums/direction.enum.js';
 export class DigitalService {
   private readonly logger = new Logger(DigitalService.name);
   private readonly preloadMap = new WeakMap<ClientSdkType, Promise<void>>();
+
   private static readonly OPTION_PERIOD = 60;
+
+
+  private async ensurePreloaded(sdk: ClientSdkType): Promise<void> {
+    let preload = this.preloadMap.get(sdk);
+    if (!preload) {
+      preload = this.preloadDigitalOptions(sdk);
+      this.preloadMap.set(sdk, preload);
+    }
+    return preload;
+  }
+
+  private async preloadDigitalOptions(sdk: ClientSdkType): Promise<void> {
+    try {
+      const digitalOptions = await sdk.digitalOptions();
+      const underlyings = digitalOptions.getUnderlyingsAvailableForTradingAt(new Date());
+      await Promise.all(
+        underlyings.map(async underlying => {
+          try {
+            await underlying.instruments();
+          } catch (error) {
+            this.logger.warn(`Failed to preload instruments for ${underlying.name}: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }),
+      );
+    } catch (error) {
+      this.logger.warn(`Failed to preload digital options cache: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+
 
   private async ensurePreloaded(sdk: ClientSdkType): Promise<void> {
     let preload = this.preloadMap.get(sdk);
@@ -66,6 +97,7 @@ export class DigitalService {
       const instruments = await availableUnderlying.instruments();
       const availableInstrument = instruments
         .getAvailableForBuyAt(new Date())
+
         .find(instrument => instrument.period === DigitalService.OPTION_PERIOD);
 
       if (!availableInstrument) {
