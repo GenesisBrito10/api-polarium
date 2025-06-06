@@ -1,6 +1,9 @@
 import { Injectable, Logger, NotFoundException, InternalServerErrorException, RequestTimeoutException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import type { ClientSdk as ClientSdkType, Position as PositionSdkType } from '@quadcode-tech/client-sdk-js';
+import { OrderResult, OrderResultDocument } from './schemas/order-result.schema.js';
 
 
 
@@ -9,7 +12,10 @@ export class OrderService {
   private readonly logger = new Logger(OrderService.name);
   private readonly subscriptionTimeout: number;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    @InjectModel(OrderResult.name) private orderResultModel: Model<OrderResultDocument>,
+  ) {
     const timeout = this.configService.get<number>('orderSubscriptionTimeout');
     if (timeout === undefined) {
       throw new Error('orderSubscriptionTimeout is not defined in configuration');
@@ -92,7 +98,15 @@ export class OrderService {
             if (subscription && typeof subscription.unsubscribe === 'function') {
               subscription.unsubscribe(); 
             }
-            resolve(this.cleanPositionPayload(position));
+            const payload = this.cleanPositionPayload(position);
+            this.orderResultModel
+              .create({ orderId: numericOrderId, payload })
+              .catch(err =>
+                this.logger.error(
+                  `Failed to store order result: ${err instanceof Error ? err.message : String(err)}`,
+                ),
+              );
+            resolve(payload);
           }
         });
         this.logger.log(`Subscribed to position updates for order ID: ${orderId}. Waiting for 'closed' status.`);
