@@ -1,0 +1,20 @@
+import { Controller, Get, Query, HttpCode, HttpStatus } from '@nestjs/common';
+import { OrderService } from './order.service.js';
+import { GetOrderQueryDto } from './dto/get-order.dto.js';
+import { SdkService } from '../sdk/sdk.service.js';
+
+@Controller('order')
+export class OrderController {
+  constructor(
+    private readonly orderService: OrderService,
+    private readonly sdkService: SdkService,
+  ) {}
+
+  @Get() // Route will be /api/order?login=...&password=...&orderId=...
+  @HttpCode(HttpStatus.OK)
+  async getOrder(@Query() getOrderDto: GetOrderQueryDto) {
+    const sdk = await this.sdkService.getSdk(getOrderDto.login, getOrderDto.password);
+    const orderDetails = await this.orderService.getOrderDetails(sdk, getOrderDto.orderId);
+    return orderDetails; // The service already returns the cleaned payload
+  }
+}

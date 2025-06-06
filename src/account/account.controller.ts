@@ -1,0 +1,20 @@
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { AccountService } from './account.service.js';
+import { GetBalanceDto } from './dto/get-balance.dto.js';
+import { SdkService } from '../sdk/sdk.service.js';
+
+@Controller('account/balance') // Route will be /api/balance
+export class AccountController {
+  constructor(
+    private readonly accountService: AccountService,
+    private readonly sdkService: SdkService,
+  ) {}
+
+  @Post() // Changed to POST to align with original, though GET might be more semantically correct if no state is changed.
+  @HttpCode(HttpStatus.OK)
+  async getBalances(@Body() getBalanceDto: GetBalanceDto) {
+    const sdk = await this.sdkService.getSdk(getBalanceDto.login, getBalanceDto.password);
+    const balances = await this.accountService.getAccountBalances(sdk);
+    return { balances };
+  }
+}
