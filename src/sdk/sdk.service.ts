@@ -2,7 +2,10 @@ import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common
 import { ConfigService } from '@nestjs/config';
 import { LRUCache } from 'lru-cache';
 import { createHash } from 'crypto';
-import type { ClientSdk as ClientSdkType } from '@quadcode-tech/client-sdk-js';
+import type {
+  ClientSdk as ClientSdkType,
+} from '@quadcode-tech/client-sdk-js';
+import type SdkModule from '@quadcode-tech/client-sdk-js';
 
 interface CachedSdk {
   sdk: ClientSdkType; 
@@ -18,6 +21,18 @@ export class SdkService {
   private readonly baseUrlWs: string;
   private readonly baseUrlApi: string;
   private readonly brokerId: number;
+  private sdkModulePromise: Promise<typeof SdkModule> | null = null;
+
+  private loadSdkModule() {
+    if (!this.sdkModulePromise) {
+      this.sdkModulePromise = import('@quadcode-tech/client-sdk-js');
+    }
+    return this.sdkModulePromise;
+  }
+
+  private hashPassword(password: string): string {
+    return createHash('sha256').update(password).digest('hex');
+  }
 
   constructor(private configService: ConfigService) {
     const baseUrlWs = this.configService.get<string>('sdk.baseUrlWs');
@@ -27,25 +42,24 @@ export class SdkService {
     this.sdkCache = new LRUCache<string, CachedSdk>({ max: 50, ttl: ttlMs });
 
     if (!baseUrlWs || !baseUrlApi || !brokerId) {
-        this.logger.error('SDK base URLs or Broker ID are not configured. Check your .env file.');
-        throw new InternalServerErrorException('SDK configuration is missing.');
+      this.logger.error('SDK base URLs or Broker ID are not configured. Check your .env file.');
+      throw new InternalServerErrorException('SDK configuration is missing.');
     }
 
     this.baseUrlWs = baseUrlWs;
     this.baseUrlApi = baseUrlApi;
     this.brokerId = brokerId;
 
-    if (!this.baseUrlWs || !this.baseUrlApi || !this.brokerId) {
-        this.logger.error('SDK base URLs or Broker ID are not configured. Check your .env file.');
-        throw new InternalServerErrorException('SDK configuration is missing.');
-    }
+    // Preload SDK module to reduce first-call latency
+    this.loadSdkModule().catch(err =>
+      this.logger.warn(`Failed to preload SDK module: ${err instanceof Error ? err.message : String(err)}`),
+    );
   }
 
   private async createSdkInstance(login: string, password: string): Promise<ClientSdkType> {
     try {
-      // Dynamically import the SDK module to get runtime values (classes, enums)
-        const { ClientSdk, LoginPasswordAuthMethod } = await import('@quadcode-tech/client-sdk-js');
-      
+      const { ClientSdk, LoginPasswordAuthMethod } = await this.loadSdkModule();
+
       const sdk = await ClientSdk.create(
         this.baseUrlWs,
         this.brokerId,
@@ -62,7 +76,7 @@ export class SdkService {
   }
 
   async getSdk(login: string, password: string): Promise<ClientSdkType> {
-    const passwordHash = createHash('sha256').update(password).digest('hex');
+    const passwordHash = this.hashPassword(password);
     const cachedEntry = this.sdkCache.get(login);
 
     if (cachedEntry && cachedEntry.passwordHash === passwordHash) {
