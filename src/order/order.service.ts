@@ -109,4 +109,9 @@ export class OrderService {
       }
     });
   }
+
+  async getOrderHistory(email: string) {
+    return this.orderResultModel.find({ email }).lean().exec();
+  }
+
 }

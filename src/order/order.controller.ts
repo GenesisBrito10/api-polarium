@@ -22,9 +22,9 @@ export class OrderController {
   @Get('history') // Route will be /api/order/history?email=...&password=...&activeId=...
   @HttpCode(HttpStatus.OK)
   async getOrderHistory(@Query() getOrderDto: GetHistoryDto) {
-    const sdk = await this.sdkService.getSdk(getOrderDto.email, getOrderDto.password);
     
-    /* const orderHistory = await this.orderService.getOrderHistory(sdk);
-    return orderHistory;  */
+    
+    const orderHistory = await this.orderService.getOrderHistory(getOrderDto.email);
+    return orderHistory; 
   }
 }

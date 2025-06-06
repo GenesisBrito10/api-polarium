@@ -11,20 +11,21 @@ import { WebhookModule } from './webhook/webhook.module.js';
 import { WebsocketModule } from './websocket/websocket.module.js';
 import configuration from './config/configuration.js'; // Adjust the path as necessary
 
+const config = configuration();
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true, // Makes ConfigModule available globally
       load: [configuration], // Load custom configuration
     }),
-    MongooseModule.forRoot('mongodb://automagroup:3nWLOXv168Bg@177.93.108.140:27018/polarium?authSource=admin'),
+    MongooseModule.forRoot(config.mongoUri),
     SdkModule,
     TradingModule,
     AccountModule,
     OrderModule,
     WebhookModule,
     WebsocketModule,
-    
   ],
   controllers: [AppController],
   providers: [Logger, AppService], // Add AppService to providers

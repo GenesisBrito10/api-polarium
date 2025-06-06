@@ -1,6 +1,8 @@
+
 export default () => ({
   port: parseInt(process.env.PORT ?? '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
+  mongoUri: process.env.MONGO_URI || 'mongodb://automagroup:3nWLOXv168Bg@177.93.108.140:27018/polarium?authSource=admin',
   sdk: {
     baseUrlWs: process.env.BASE_URL_WS || 'wss://ws.trade.polariumbroker.com/echo/websocket',
     baseUrlApi: process.env.BASE_URL_API || 'https://api.trade.polariumbroker.com',
