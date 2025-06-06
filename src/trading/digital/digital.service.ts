@@ -7,6 +7,34 @@ import { TradeDirection } from '../../shared/enums/direction.enum.js';
 @Injectable()
 export class DigitalService {
   private readonly logger = new Logger(DigitalService.name);
+  private readonly preloadMap = new WeakMap<ClientSdkType, Promise<void>>();
+
+  private async ensurePreloaded(sdk: ClientSdkType): Promise<void> {
+    let preload = this.preloadMap.get(sdk);
+    if (!preload) {
+      preload = this.preloadDigitalOptions(sdk);
+      this.preloadMap.set(sdk, preload);
+    }
+    return preload;
+  }
+
+  private async preloadDigitalOptions(sdk: ClientSdkType): Promise<void> {
+    try {
+      const digitalOptions = await sdk.digitalOptions();
+      const underlyings = digitalOptions.getUnderlyingsAvailableForTradingAt(new Date());
+      await Promise.all(
+        underlyings.map(async underlying => {
+          try {
+            await underlying.instruments();
+          } catch (error) {
+            this.logger.warn(`Failed to preload instruments for ${underlying.name}: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }),
+      );
+    } catch (error) {
+      this.logger.warn(`Failed to preload digital options cache: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
 
   async buyOption(sdk: ClientSdkType, buyDigitalDto: BuyDigitalDto) {
     const { assetName, operationValue, direction, account_type } = buyDigitalDto;
@@ -17,12 +45,12 @@ export class DigitalService {
       
       const { BalanceType, DigitalOptionsDirection } =  await import('@quadcode-tech/client-sdk-js');
 
+      await this.ensurePreloaded(sdk);
+
       const [digitalOptions, balancesInstance] = await Promise.all([
         sdk.digitalOptions(),
         sdk.balances(),
       ]);
-
-   
 
       const availableUnderlying = digitalOptions
         .getUnderlyingsAvailableForTradingAt(new Date())
@@ -36,7 +64,7 @@ export class DigitalService {
       const instruments = await availableUnderlying.instruments();
       const availableInstrument = instruments
         .getAvailableForBuyAt(new Date())
-        .find(instrument => instrument.period === 60); 
+        .find(instrument => instrument.period === 60);
 
       if (!availableInstrument) {
         this.logger.warn(`Instrument (period 60s) for digital asset "${assetName}" not found.`);
