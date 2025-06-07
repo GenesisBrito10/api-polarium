@@ -16,8 +16,8 @@ const config = configuration();
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, // Makes ConfigModule available globally
-      load: [configuration], // Load custom configuration
+      isGlobal: true, 
+      envFilePath: '.env'
     }),
     MongooseModule.forRoot(config.mongoUri),
     SdkModule,

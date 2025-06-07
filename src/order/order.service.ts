@@ -16,7 +16,7 @@ export class OrderService {
     private configService: ConfigService,
     @InjectModel(OrderResult.name) private orderResultModel: Model<OrderResultDocument>,
   ) {
-    const timeout = this.configService.get<number>('orderSubscriptionTimeout');
+    const timeout = this.configService.get<number>('ORDER_SUBSCRIPTION_TIMEOUT');
     if (timeout === undefined) {
       throw new Error('orderSubscriptionTimeout is not defined in configuration');
     }

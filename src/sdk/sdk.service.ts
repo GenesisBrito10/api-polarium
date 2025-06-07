@@ -51,10 +51,13 @@ export class SdkService {
  
 
   constructor(private configService: ConfigService) {
-    const baseUrlWs = this.configService.get<string>('sdk.baseUrlWs');
-    const baseUrlApi = this.configService.get<string>('sdk.baseUrlApi');
-    const brokerId = this.configService.get<number>('sdk.brokerId');
-    const ttlMs = this.configService.get<number>('sdkCacheTtlMs') ?? 60 * 60 * 1000;
+    const baseUrlWs = this.configService.get<string>('BASE_URL_WS');
+    const baseUrlApi = this.configService.get<string>('BASE_URL_API');
+    const brokerId = this.configService.get<number>('BROKER_ID');
+    let ttlMs = Number(this.configService.get<number>('SDK_CACHE_TTL_MS'));
+    if (!Number.isInteger(ttlMs) || ttlMs <= 0) {
+      ttlMs = 60 * 60 * 1000; // default to 1 hour
+    }
     this.sdkCache = new LRUCache<string, CachedSdk>({ max: 50, ttl: ttlMs });
 
     if (!baseUrlWs || !baseUrlApi || !brokerId) {
