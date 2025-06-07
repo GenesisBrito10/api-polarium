@@ -9,9 +9,7 @@ import { AccountModule } from './account/account.module.js';
 import { OrderModule } from './order/order.module.js';
 import { WebhookModule } from './webhook/webhook.module.js';
 import { WebsocketModule } from './websocket/websocket.module.js';
-import configuration from './config/configuration.js'; // Adjust the path as necessary
-
-const config = configuration();
+import { ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -19,7 +17,12 @@ const config = configuration();
       isGlobal: true, 
       envFilePath: '.env'
     }),
-    MongooseModule.forRoot(config.mongoUri),
+    MongooseModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URI'),
+      }),
+    }),
     SdkModule,
     TradingModule,
     AccountModule,
@@ -28,6 +31,6 @@ const config = configuration();
     WebsocketModule,
   ],
   controllers: [AppController],
-  providers: [Logger, AppService], // Add AppService to providers
+  providers: [Logger, AppService]
 })
 export class AppModule {}
