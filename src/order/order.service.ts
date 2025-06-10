@@ -67,12 +67,14 @@ export class OrderService {
           if (subscription && typeof subscription.unsubscribe === 'function') {
             subscription.unsubscribe();
           }
-          this.logger.warn(`Timeout reached waiting for order update for ID: ${orderId}`);
+          this.logger.warn(`Timeout reached waiting for order update for ID: ${orderId}, email: ${email}, uniqueId: ${uniqueId}`);
           reject(new RequestTimeoutException(`Timeout: Não foi possível obter o status final da ordem "${orderId}" dentro do tempo limite.`));
         }, this.subscriptionTimeout);
 
+        this.logger.log(`Trading for order ID: ${orderId}, email: ${email}, uniqueId: ${uniqueId}`);
+
         subscription = positions.subscribeOnUpdatePosition((position: PositionSdkType) => {
-          this.logger.debug(`Received position update: ID ${position.internalId}, Status ${position.status}, Order IDs ${position.orderIds}`);
+          //this.logger.debug(`Received position update: ID ${position.internalId}, Status ${position.status}, Order IDs ${position.orderIds}`);
           
           if (
             position.instrumentType === InstrumentType.DigitalOption && 
@@ -80,7 +82,7 @@ export class OrderService {
             position.status === 'closed' && 
             position.orderIds.includes(numericOrderId)
           ) {
-            this.logger.log(`Relevant closed position found for order ID ${orderId}: Position internal ID ${position.internalId}`);
+            this.logger.log(`Order ID ${numericOrderId} is closed for email ${email}. Processing position update.`);
             clearTimeout(timeoutId); 
             if (subscription && typeof subscription.unsubscribe === 'function') {
               subscription.unsubscribe(); 
@@ -94,9 +96,10 @@ export class OrderService {
                 ),
               );
             resolve(payload);
+            
           }
         });
-        this.logger.log(`Subscribed to position updates for order ID: ${orderId}. Waiting for 'closed' status.`);
+       
 
       } catch (error) {
         clearTimeout(timeoutId);
