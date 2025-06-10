@@ -1,6 +1,6 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import  { LRUCache }  from 'lru-cache';
+import { LRUCache } from 'lru-cache';
 import { createHash } from 'crypto';
 import type {
   ClientSdk as ClientSdkType,
@@ -32,6 +32,10 @@ export class SdkService {
 
   private hashPassword(password: string): string {
     return createHash('sha256').update(password).digest('hex');
+  }
+
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
   }
 
   private async warmUpSdk(sdk: ClientSdkType): Promise<void> {
@@ -77,19 +81,20 @@ export class SdkService {
   }
 
   private async createSdkInstance(login: string, password: string): Promise<ClientSdkType> {
+    const normalizedLogin = this.normalizeEmail(login);
     try {
       const { ClientSdk, LoginPasswordAuthMethod } = await this.loadSdkModule();
 
       const sdk = await ClientSdk.create(
         this.baseUrlWs,
         this.brokerId,
-        new LoginPasswordAuthMethod(this.baseUrlApi, login, password),
+        new LoginPasswordAuthMethod(this.baseUrlApi, normalizedLogin, password),
       );
       await this.warmUpSdk(sdk);
-      this.logger.log(`SDK created successfully for login "${login}"`);
+      this.logger.log(`SDK created successfully for login "${normalizedLogin}"`);
       return sdk;
     } catch (error) {
-      this.logger.error(`Error creating SDK for login "${login}": ${error.message}`, error.stack);
+      this.logger.error(`Error creating SDK for login "${normalizedLogin}": ${error.message}`, error.stack);
       // Ensure error is an instance of Error for consistent message access
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new InternalServerErrorException(`Failed to create SDK: ${errorMessage}`);
@@ -97,47 +102,49 @@ export class SdkService {
   }
 
   async getSdk(login: string, password: string): Promise<ClientSdkType> {
+    const normalizedLogin = this.normalizeEmail(login);
     const passwordHash = this.hashPassword(password);
-    const cachedEntry = this.sdkCache.get(login);
+    const cachedEntry = this.sdkCache.get(normalizedLogin);
 
     if (cachedEntry && cachedEntry.passwordHash === passwordHash) {
-      this.logger.log(`Using cached SDK for login "${login}"`);
+      this.logger.log(`Using cached SDK for login "${normalizedLogin}"`);
       return cachedEntry.sdk;
     }
 
     if (cachedEntry && cachedEntry.passwordHash !== passwordHash) {
-        this.logger.log(`Password changed for login "${login}". Recreating SDK.`);
+        this.logger.log(`Password changed for login "${normalizedLogin}". Recreating SDK.`);
         // Potentially close old SDK instance if necessary and SDK provides a method
         // await cachedEntry.sdk.close();
-        this.sdkCache.delete(login);
+        this.sdkCache.delete(normalizedLogin);
     }
-    if (this.creationPromises.has(login)) {
-      this.logger.log(`Waiting for ongoing SDK creation for login "${login}"`);
-      return this.creationPromises.get(login)!;
+    if (this.creationPromises.has(normalizedLogin)) {
+      this.logger.log(`Waiting for ongoing SDK creation for login "${normalizedLogin}"`);
+      return this.creationPromises.get(normalizedLogin)!;
     }
 
-    this.logger.log(`Creating new SDK instance for login "${login}"`);
-    const creationPromise = this.createSdkInstance(login, password);
-    this.creationPromises.set(login, creationPromise);
+    this.logger.log(`Creating new SDK instance for login "${normalizedLogin}"`);
+    const creationPromise = this.createSdkInstance(normalizedLogin, password);
+    this.creationPromises.set(normalizedLogin, creationPromise);
     try {
       const newSdk = await creationPromise;
-      this.sdkCache.set(login, { sdk: newSdk, passwordHash });
+      this.sdkCache.set(normalizedLogin, { sdk: newSdk, passwordHash });
       return newSdk;
     } finally {
-      this.creationPromises.delete(login);
+      this.creationPromises.delete(normalizedLogin);
     }
   }
 
   removeSdkFromCache(login: string): boolean {
-    const cachedEntry = this.sdkCache.get(login);
+    const normalizedLogin = this.normalizeEmail(login);
+    const cachedEntry = this.sdkCache.get(normalizedLogin);
     if (cachedEntry) {
       // Optional: Cleanly close/disconnect SDK if the SDK provides such a method
       // For example: if (typeof cachedEntry.sdk.close === 'function') { await cachedEntry.sdk.close(); }
-      this.sdkCache.delete(login);
-      this.logger.log(`SDK for login "${login}" removed from cache.`);
+      this.sdkCache.delete(normalizedLogin);
+      this.logger.log(`SDK for login "${normalizedLogin}" removed from cache.`);
       return true;
     }
-    this.logger.warn(`SDK for login "${login}" not found in cache for removal.`);
+    this.logger.warn(`SDK for login "${normalizedLogin}" not found in cache for removal.`);
     return false;
   }
 }
