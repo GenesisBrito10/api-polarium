@@ -4,15 +4,31 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import compress from '@fastify/compress';
-import cors from '@fastify/cors';
+
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(),
   );
+  await app.register(async (fastify) => {
+    fastify.addHook('onRequest', (request, reply, done) => {
+      reply
+        .header('Access-Control-Allow-Origin', '*')
+        .header(
+          'Access-Control-Allow-Methods',
+          'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+        )
+        .header('Access-Control-Allow-Headers', '*');
+      done();
+    });
+
+    fastify.options('*', (request, reply) => {
+      reply.send();
+    });
+  });
   await app.register(compress);
-  await app.register(cors, { origin: true });
+  
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');
