@@ -5,35 +5,18 @@ import { ConfigService } from '@nestjs/config';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import compress from '@fastify/compress';
 
-
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(),
   );
-  await app.register(async (fastify) => {
-    fastify.addHook('onRequest', (request, reply, done) => {
-      reply
-        .header('Access-Control-Allow-Origin', '*')
-        .header(
-          'Access-Control-Allow-Methods',
-          'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-        )
-        .header('Access-Control-Allow-Headers', '*');
-      done();
-    });
-
-    fastify.options('*', (request, reply) => {
-      reply.send();
-    });
-  });
   await app.register(compress);
-  
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');
 
   app.setGlobalPrefix('api');
+  app.enableCors();
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -42,6 +25,8 @@ async function bootstrap() {
       transform: true, // Automatically transforms payloads to DTO instances
     }),
   );
+
+  // Configure CORS if needed
 
   await app.listen({ port, host: '0.0.0.0' });
   Logger.log(`Server running on http://localhost:${port}/api`, 'Bootstrap');
