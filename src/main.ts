@@ -4,6 +4,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import compress from '@fastify/compress';
+import cors from '@fastify/cors';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -11,6 +12,7 @@ async function bootstrap() {
     new FastifyAdapter(),
   );
   await app.register(compress);
+  await app.register(cors, { origin: true });
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');
@@ -24,9 +26,6 @@ async function bootstrap() {
       transform: true, // Automatically transforms payloads to DTO instances
     }),
   );
-
-  // Configure CORS if needed
-  app.enableCors();
 
   await app.listen({ port, host: '0.0.0.0' });
   Logger.log(`Server running on http://localhost:${port}/api`, 'Bootstrap');
