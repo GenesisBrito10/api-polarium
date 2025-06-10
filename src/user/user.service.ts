@@ -44,13 +44,13 @@ export class UserService {
       if (!response.ok) {
         const text = await response.text();
         this.logger.error(`Registration failed: ${response.status} ${text}`);
-        return (text.message || 'Erro ao registrar usuário');
+        throw new InternalServerErrorException(text.message || 'Erro ao registrar usuário');
       }
 
       return response.json();
     } catch (error) {
       this.logger.error(`Error registering user: ${error instanceof Error ? error.message : String(error)}`);
-      throw new InternalServerErrorException('Erro ao registrar usuário');
+      throw new InternalServerErrorException(error instanceof Error ? error.message : 'Erro ao registrar usuário');
     }
   }
 }
