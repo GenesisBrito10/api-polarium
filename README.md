@@ -35,6 +35,7 @@ $ npm install
 
 Use `SDK_CACHE_TTL_MS` to control how long SDK instances stay cached.
 The default is one hour (3600000ms).
+Emails are normalized to lowercase before caching so each address stores only one SDK instance.
 
 ## Compile and run the project
 
