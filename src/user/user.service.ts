@@ -44,7 +44,7 @@ export class UserService {
       if (!response.ok) {
         const text = await response.text();
         this.logger.error(`Registration failed: ${response.status} ${text}`);
-        throw new InternalServerErrorException('Falha ao registrar usuário');
+        return (text.message || 'Erro ao registrar usuário');
       }
 
       return response.json();
