@@ -10,6 +10,7 @@ import { OrderModule } from './order/order.module.js';
 import { WebhookModule } from './webhook/webhook.module.js';
 import { WebsocketModule } from './websocket/websocket.module.js';
 import { ConfigService } from '@nestjs/config';
+import { UserModule } from './user/user.module.js';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ConfigService } from '@nestjs/config';
     OrderModule,
     WebhookModule,
     WebsocketModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [Logger, AppService]
