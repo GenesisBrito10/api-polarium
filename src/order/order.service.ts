@@ -45,7 +45,7 @@ export class OrderService {
     };
   }
 
-  async getOrderDetails(sdk: ClientSdkType, email:string,orderId: number): Promise<any> {
+  async getOrderDetails(sdk: ClientSdkType, email:string,orderId: number,uniqueId:string): Promise<any> {
     this.logger.log(`Attempting to get details for order ID: ${orderId}`);
     const numericOrderId =orderId;
     if (isNaN(numericOrderId)) {
@@ -87,7 +87,7 @@ export class OrderService {
             }
             const payload = this.cleanPositionPayload(position);
             this.orderResultModel
-              .create({ email: email, orderId: numericOrderId, payload })
+              .create({ email: email, orderId: numericOrderId, payload, uniqueId: uniqueId })
               .catch(err =>
                 this.logger.error(
                   `Failed to store order result: ${err instanceof Error ? err.message : String(err)}`,
@@ -111,7 +111,38 @@ export class OrderService {
   }
 
   async getOrderHistory(email: string) {
-    return this.orderResultModel.find({ email }).lean().exec();
+    // Busca todos os resultados pelo email
+    const results = await this.orderResultModel.find({ email }).lean().exec();
+
+    // Agrupa por uniqueId
+    const grouped = results.reduce((acc, curr) => {
+      const key = curr.uniqueId || 'no-unique-id';
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(curr);
+      return acc;
+    }, {} as Record<string, typeof results>);
+
+   
+    const processed = Object.values(grouped).map(group => {
+      // Se houver pelo menos um com pnl > 0, retorna só ele (primeiro encontrado)
+      const positive = group.find(item => item.payload && typeof item.payload.pnl === 'number' && item.payload.pnl > 0);
+      if (positive) return positive;
+
+      // Se todos negativos ou zero, soma pnl e invest, retorna um objeto representando o grupo
+      const sumPnl = group.reduce((sum, item) => sum + Number(item.payload?.pnl ?? 0), 0);
+      const sumInvest = group.reduce((sum, item) => sum + Number(item.payload?.invest ?? 0), 0);
+
+      // Usa o primeiro como base para o retorno
+      const base = { ...group[0] };
+      base.payload = {
+      ...base.payload,
+      pnl: sumPnl,
+      invest: sumInvest,
+      };
+      return base;
+    });
+
+    return processed;
   }
 
 }

@@ -13,4 +13,8 @@ export class GetOrderQueryDto {
   @IsString({ message: 'orderId deve ser uma string' })
   @IsNotEmpty({ message: 'orderId é obrigatório' })
   orderId: string;
+
+  @IsString({ message: 'uniqueId deve ser uma string' })
+  @IsNotEmpty({ message: 'uniqueId é obrigatório' })
+  uniqueId: string;
 }

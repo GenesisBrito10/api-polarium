@@ -3,7 +3,6 @@ import { AppModule } from './app.module.js';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 import compress from '@fastify/compress';
 
 async function bootstrap() {
