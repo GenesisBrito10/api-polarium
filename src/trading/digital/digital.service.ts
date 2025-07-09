@@ -58,10 +58,9 @@ export class DigitalService {
       operationValue,
       direction,
       account_type,
-      option_period,
+      period,
     } = buyDigitalDto;
 
-    const period = option_period;
 
     this.logger.log(
       `Attempting to buy digital option for asset "${assetName}", value: ${operationValue}, direction: ${direction}, account: ${account_type}, period: ${period}`,
