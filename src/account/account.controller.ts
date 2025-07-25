@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { AccountService } from './account.service.js';
 import { GetBalanceDto } from './dto/get-balance.dto.js';
 import { SdkService } from '../sdk/sdk.service.js';
@@ -10,11 +10,15 @@ export class AccountController {
     private readonly sdkService: SdkService,
   ) {}
 
-  @Post('balance') 
+  private readonly logger = new Logger(AccountController.name);
+
+  @Post('balance')
   @HttpCode(HttpStatus.OK)
   async getBalances(@Body() getBalanceDto: GetBalanceDto) {
+    this.logger.log(`POST /account/balance - email: ${getBalanceDto.email}`);
     const sdk = await this.sdkService.getSdk(getBalanceDto.email, getBalanceDto.password);
     const balances = await this.accountService.getAccountBalances(sdk);
+    this.logger.log(`Retrieved ${balances.length} balances for ${getBalanceDto.email}`);
     return { balances };
   }
 }
