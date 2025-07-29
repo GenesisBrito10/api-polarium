@@ -6,7 +6,7 @@ export class TradeWebhookDto {
   pair!: string;
 
   @IsNumber()
-  time!: number;
+  period!: number;
 
   @IsEnum(TradeDirection)
   direction!: TradeDirection;
