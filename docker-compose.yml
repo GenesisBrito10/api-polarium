@@ -1,12 +1,12 @@
 version: "3.8"
 
 services:
-  backend-automatico:
-    # IMPORTANTE: Substitua pelo nome da sua imagem no Docker Hub
+  api: # <---- Este é o nome do serviço
     image: genesisbrito/backend-automatico:latest
-    
+    env_file:
+      - .env
     networks:
-      - PolariumNet # Conectado à sua rede
+      - PolariumNet
     deploy:
       replicas: 1
       restart_policy:
@@ -16,21 +16,21 @@ services:
         - "traefik.enable=true"
         - "traefik.docker.network=PolariumNet"
 
-        # --- Roteador HTTP para redirecionamento ---
-        - "traefik.http.routers.backend-automatico-http.rule=Host(`backend-automatico.tipolariumbroker.com`)"
-        - "traefik.http.routers.backend-automatico-http.entrypoints=web"
-        - "traefik.http.routers.backend-automatico-http.middlewares=redirect-to-https"
+        # --- Roteador HTTP (Corrigido) ---
+        - "traefik.http.routers.api-http.rule=Host(`backend-automatico.tipolariumbroker.com`)"
+        - "traefik.http.routers.api-http.entrypoints=web"
+        - "traefik.http.routers.api-http.middlewares=redirect-to-https"
 
-        # --- Middleware de Redirecionamento ---
+        # --- Middleware de Redirecionamento (não precisa de alteração) ---
         - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
 
-        # --- Roteador HTTPS ---
-        - "traefik.http.routers.backend-automatico-https.rule=Host(`backend-automatico.tipolariumbroker.com`)"
-        - "traefik.http.routers.backend-automatico-https.entrypoints=websecure"
-        - "traefik.http.routers.backend-automatico-https.tls.certresolver=letsencryptresolver" # Verifique se 'myresolver' é o nome do seu resolvedor
+        # --- Roteador HTTPS (Corrigido) ---
+        - "traefik.http.routers.api-https.rule=Host(`backend-automatico.tipolariumbroker.com`)"
+        - "traefik.http.routers.api-https.entrypoints=websecure"
+        - "traefik.http.routers.api-https.tls.certresolver=myresolver"
 
-        # --- Serviço ---
-        - "traefik.http.services.backend-automatico.loadbalancer.server.port=3000" # Porta interna da sua API
+        # --- Serviço (Corrigido) ---
+        - "traefik.http.services.api.loadbalancer.server.port=3000" # O nome do serviço aqui DEVE ser 'api'
     logging:
       driver: json-file
       options:
