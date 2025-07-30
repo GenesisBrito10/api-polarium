@@ -19,7 +19,11 @@ async function bootstrap() {
   app.useGlobalInterceptors(new LoggingInterceptor());
 
   app.setGlobalPrefix('api');
-  app.enableCors();
+  app.enableCors({
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    origin: true,
+    credentials: true,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
