@@ -4,7 +4,7 @@ import { Document } from 'mongoose';
 
 export type OrderResultDocument = OrderResult & Document;
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, collection: 'order_results' })
 export class OrderResult {
 
   @Prop({ required: true, index: true })
