@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  api:
+  backend-automatico:
     # IMPORTANTE: Substitua pelo nome da sua imagem no Docker Hub
     image: genesisbrito/backend-automatico:latest
     
