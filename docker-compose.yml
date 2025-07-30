@@ -4,8 +4,7 @@ services:
   api:
     # IMPORTANTE: Substitua pelo nome da sua imagem no Docker Hub
     image: genesisbrito/backend-automatico:latest
-    env_file:
-      - .env
+    
     networks:
       - PolariumNet # Conectado à sua rede
     deploy:
