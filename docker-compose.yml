@@ -27,10 +27,10 @@ services:
         # --- Roteador HTTPS (Corrigido) ---
         - "traefik.http.routers.api-https.rule=Host(`backend-automatico.tipolariumbroker.com`)"
         - "traefik.http.routers.api-https.entrypoints=websecure"
-        - "traefik.http.routers.api-https.tls.certresolver=myresolver"
+        - "traefik.http.routers.api-https.tls.certresolver=letsencryptresolver"
 
         # --- Serviço (Corrigido) ---
-        - "traefik.http.services.api.loadbalancer.server.port=3000" # O nome do serviço aqui DEVE ser 'api'
+        - "traefik.http.services.api.loadbalancer.server.port=2003" # O nome do serviço aqui DEVE ser 'api'
     logging:
       driver: json-file
       options:
