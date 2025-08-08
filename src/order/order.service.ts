@@ -1,9 +1,9 @@
 import { Injectable, Logger, NotFoundException, InternalServerErrorException, RequestTimeoutException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import type { ClientSdk as ClientSdkType, Position as PositionSdkType } from '@quadcode-tech/client-sdk-js';
-import { OrderResult, OrderResultDocument } from './schemas/order-result.schema.js';
+import { OrderResultDocument, OrderResultSchema } from './schemas/order-result.schema.js';
 
 
 
@@ -14,7 +14,7 @@ export class OrderService {
 
   constructor(
     private configService: ConfigService,
-    @InjectModel(OrderResult.name) private orderResultModel: Model<OrderResultDocument>,
+    @InjectConnection() private readonly connection: Connection,
   ) {
     const timeout = this.configService.get<number>('ORDER_SUBSCRIPTION_TIMEOUT');
     if (timeout === undefined) {
@@ -45,7 +45,7 @@ export class OrderService {
     };
   }
 
-  async getOrderDetails(sdk: ClientSdkType, email:string,orderId: number,uniqueId:string): Promise<any> {
+  async getOrderDetails(sdk: ClientSdkType, email:string,orderId: number,uniqueId:string, collection: string): Promise<any> {
     this.logger.log(`Attempting to get details for order ID: ${orderId}`);
     const numericOrderId =orderId;
     if (isNaN(numericOrderId)) {
@@ -56,6 +56,7 @@ export class OrderService {
     const { InstrumentType } = await import('@quadcode-tech/client-sdk-js');
 
 
+    const orderResultModel = this.connection.model<OrderResultDocument>(collection, OrderResultSchema, collection);
     return new Promise(async (resolve, reject) => {
       let subscription; 
       let timeoutId;
@@ -88,7 +89,7 @@ export class OrderService {
               subscription.unsubscribe(); 
             }
             const payload = this.cleanPositionPayload(position);
-            this.orderResultModel
+            orderResultModel
               .create({ email: email, orderId: numericOrderId, payload, uniqueId: uniqueId })
               .catch(err =>
                 this.logger.error(
@@ -113,9 +114,10 @@ export class OrderService {
     });
   }
 
-  async getOrderHistory(email: string) {
+  async getOrderHistory(email: string, collection: string) {
+    const orderResultModel = this.connection.model<OrderResultDocument>(collection, OrderResultSchema, collection);
     // Busca todos os resultados pelo email
-    const results = await this.orderResultModel.find({ email }).lean().exec();
+    const results = await orderResultModel.find({ email }).lean().exec();
 
     // Agrupa por uniqueId
     const grouped = results.reduce((acc, curr) => {
