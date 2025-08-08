@@ -19,7 +19,7 @@ export class OrderController {
     this.logger.log(`GET /order - email: ${getOrderDto.email}, orderId: ${getOrderDto.orderId}`);
     const sdk = await this.sdkService.getSdk(getOrderDto.email, getOrderDto.password);
     const orderId = Number(getOrderDto.orderId);
-    const orderDetails = await this.orderService.getOrderDetails(sdk, getOrderDto.email,orderId, getOrderDto.uniqueId);
+    const orderDetails = await this.orderService.getOrderDetails(sdk, getOrderDto.email,orderId, getOrderDto.uniqueId, getOrderDto.collection);
     this.logger.log(`Fetched order details for ${getOrderDto.email} - ${orderId}`);
     return orderDetails;
   }
@@ -27,7 +27,7 @@ export class OrderController {
   @HttpCode(HttpStatus.OK)
   async getOrderHistory(@Query() getOrderDto: GetHistoryDto) {
     this.logger.log(`GET /order/history - email: ${getOrderDto.email}`);
-    const orderHistory = await this.orderService.getOrderHistory(getOrderDto.email);
+    const orderHistory = await this.orderService.getOrderHistory(getOrderDto.email, getOrderDto.collection);
     this.logger.log(`Retrieved order history for ${getOrderDto.email}`);
     return orderHistory;
   }
