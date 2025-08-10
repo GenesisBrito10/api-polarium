@@ -37,7 +37,7 @@ export class BinaryService {
 
       const availableActive = binaryOptions
         .getActives()
-        .find((item) => !item.isSuspended && item.name === assetName);
+        .find((item) => !item.isSuspended && item.ticker === assetName);
 
       if (!availableActive) {
         this.logger.warn(
@@ -51,7 +51,7 @@ export class BinaryService {
       const instruments = await availableActive.instruments();
       const availableInstrument = instruments
         .getAvailableForBuyAt(new Date())
-        .find((instrument) => instrument.period === period);
+        .find((instrument) => instrument.expirationSize === period);
 
       if (!availableInstrument) {
         this.logger.warn(

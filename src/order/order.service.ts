@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, InternalServerErrorException, RequestTimeoutException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
+import mongoose from 'mongoose';
 import type { ClientSdk as ClientSdkType, Position as PositionSdkType } from '@quadcode-tech/client-sdk-js';
 import { OrderResultDocument, OrderResultSchema } from './schemas/order-result.schema.js';
 
@@ -14,7 +14,7 @@ export class OrderService {
 
   constructor(
     private configService: ConfigService,
-    @InjectConnection() private readonly connection: Connection,
+  @InjectConnection() private readonly connection: mongoose.Connection,
   ) {
     const timeout = this.configService.get<number>('ORDER_SUBSCRIPTION_TIMEOUT');
     if (timeout === undefined) {
@@ -53,10 +53,9 @@ export class OrderService {
     }
 
  
-    const { InstrumentType } = await import('@quadcode-tech/client-sdk-js');
+  const { InstrumentType } = await import('@quadcode-tech/client-sdk-js');
 
-
-    const orderResultModel = this.connection.model<OrderResultDocument>(collection, OrderResultSchema, collection);
+  const orderResultModel = this.connection.model(collection, OrderResultSchema, collection);
     return new Promise(async (resolve, reject) => {
       let subscription; 
       let timeoutId;
@@ -115,9 +114,17 @@ export class OrderService {
   }
 
   async getOrderHistory(email: string, collection: string) {
-    const orderResultModel = this.connection.model<OrderResultDocument>(collection, OrderResultSchema, collection);
+  const orderResultModel = this.connection.model(collection, OrderResultSchema, collection);
     // Busca todos os resultados pelo email
-    const results = await orderResultModel.find({ email }).lean().exec();
+    type LeanOrderResult = {
+      _id: any;
+      __v: number;
+      uniqueId?: string;
+      email: string;
+      orderId: number;
+      payload?: Record<string, any>;
+    };
+    const results = await orderResultModel.find({ email }).lean<LeanOrderResult[]>().exec();
 
     // Agrupa por uniqueId
     const grouped = results.reduce((acc, curr) => {
@@ -125,9 +132,8 @@ export class OrderService {
       if (!acc[key]) acc[key] = [];
       acc[key].push(curr);
       return acc;
-    }, {} as Record<string, typeof results>);
+    }, {} as Record<string, LeanOrderResult[]>);
 
-   
     const processed = Object.values(grouped).map(group => {
       // Se houver pelo menos um com pnl > 0, retorna só ele (primeiro encontrado)
       const positive = group.find(item => item.payload && typeof item.payload.pnl === 'number' && item.payload.pnl > 0);
@@ -140,9 +146,9 @@ export class OrderService {
       // Usa o primeiro como base para o retorno
       const base = { ...group[0] };
       base.payload = {
-      ...base.payload,
-      pnl: sumPnl,
-      invest: sumInvest,
+        ...base.payload,
+        pnl: sumPnl,
+        invest: sumInvest,
       };
       return base;
     });

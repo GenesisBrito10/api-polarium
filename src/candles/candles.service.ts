@@ -16,7 +16,7 @@ export class CandlesService {
       .then((b) => b.getActives())
       .catch(() => []);
 
-    return binaryActives.find((a: any) => a.name === pair);
+    return binaryActives.find((a: any) => a.ticker === pair);
   }
 
   async getCandles(sdk: ClientSdkType, pair: string, period: number) {
@@ -31,11 +31,19 @@ export class CandlesService {
       const candlesData = await candles.getCandles(active.id, period);
 
       const results = candlesData
-        .slice(-250)
-        .map((candle) => ({
-          ...candle,
-          time: new Date((candle.from - 3 * 3600) * 1000).toISOString(),
-        }))
+        .slice(-20)
+        .map((candle) => {
+          const date = new Date((candle.from - 3 * 3600) * 1000);
+          const iso = date.toISOString();
+          const time = iso.replace(/\.000Z$/, '');
+          return {
+            open: candle.open,
+            close: candle.close,
+            high: candle.max, // trocando 'max' por 'high'
+            low: candle.min,  // trocando 'min' por 'low'
+            time,
+          };
+        })
         .reverse();
 
       return { coin: active.name, period, results };
