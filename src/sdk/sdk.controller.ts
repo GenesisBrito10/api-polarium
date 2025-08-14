@@ -10,8 +10,9 @@ export class SdkController {
   @Post('start')
   @HttpCode(HttpStatus.OK)
   async startSdk(@Body() sdkCredentialsDto: SdkCredentialsDto) {
-    await this.sdkService.getSdk(sdkCredentialsDto.email, sdkCredentialsDto.password);
-    return { message: 'SDK initialized or retrieved successfully.' };
+    const sdk = await this.sdkService.getSdk(sdkCredentialsDto.email, sdkCredentialsDto.password);
+    console.log('SDK initialized:', JSON.stringify(sdk.userProfile));
+    return { message: 'SDK initialized or retrieved successfully.',data: sdk.userProfile };
   }
 
   @Delete('stop')

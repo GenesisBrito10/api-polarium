@@ -77,7 +77,7 @@ export class DigitalService {
         sdk.digitalOptions(),
         sdk.balances(),
       ]);
-
+      
       const availableUnderlying = digitalOptions
         .getUnderlyingsAvailableForTradingAt(new Date())
         .find((item) => !item.isSuspended && item.name === assetName);
@@ -110,6 +110,7 @@ export class DigitalService {
         account_type === AppAccountType.Real
           ? BalanceType.Real
           : BalanceType.Demo;
+          
       const balance = balancesInstance
         .getBalances()
         .find((b) => b.type === sdkBalanceType);

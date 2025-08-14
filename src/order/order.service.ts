@@ -114,8 +114,7 @@ export class OrderService {
   }
 
   async getOrderHistory(email: string, collection: string) {
-  const orderResultModel = this.connection.model(collection, OrderResultSchema, collection);
-    // Busca todos os resultados pelo email
+    const orderResultModel = this.connection.model(collection, OrderResultSchema, collection);
     type LeanOrderResult = {
       _id: any;
       __v: number;
@@ -134,23 +133,27 @@ export class OrderService {
       return acc;
     }, {} as Record<string, LeanOrderResult[]>);
 
-    const processed = Object.values(grouped).map(group => {
-      // Se houver pelo menos um com pnl > 0, retorna só ele (primeiro encontrado)
-      const positive = group.find(item => item.payload && typeof item.payload.pnl === 'number' && item.payload.pnl > 0);
-      if (positive) return positive;
-
-      // Se todos negativos ou zero, soma pnl e invest, retorna um objeto representando o grupo
+    // Para cada grupo, soma pnl e invest e retorna um único objeto por uniqueId
+    const processed = Object.entries(grouped).map(([uniqueId, group]) => {
       const sumPnl = group.reduce((sum, item) => sum + Number(item.payload?.pnl ?? 0), 0);
       const sumInvest = group.reduce((sum, item) => sum + Number(item.payload?.invest ?? 0), 0);
 
-      // Usa o primeiro como base para o retorno
+      // Usa o primeiro como base, mas atualiza o payload
       const base = { ...group[0] };
+      base.uniqueId = uniqueId;
       base.payload = {
-        ...base.payload,
-        pnl: sumPnl,
-        invest: sumInvest,
+      ...base.payload,
+      pnl: sumPnl,
+      invest: sumInvest,
       };
-      return base;
+
+      // Gale info: a partir do segundo objeto (índice >= 1)
+      const galeInfos = group.map((item, idx) => ({
+      ...item,
+      gale: idx,
+      }));
+
+      return { ...base, galeInfos };
     });
 
     return processed;
