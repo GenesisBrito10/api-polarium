@@ -12,6 +12,8 @@ export class AccountService {
             const mappedBalances = balances.map(balance => ({
                 type: balance.type,
                 amount: balance.amount,
+                currency: balance.currency
+
             }));
             this.logger.log(`Fetched account balances: ${JSON.stringify(mappedBalances)}`);
             return mappedBalances;
