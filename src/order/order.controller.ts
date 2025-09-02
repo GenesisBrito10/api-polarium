@@ -23,6 +23,7 @@ export class OrderController {
     this.logger.log(`Fetched order details for ${getOrderDto.email} - ${orderId}`);
     return orderDetails;
   }
+
   @Get('history') // Route will be /api/order/history?email=...&password=...&activeId=...
   @HttpCode(HttpStatus.OK)
   async getOrderHistory(@Query() getOrderDto: GetHistoryDto) {
@@ -30,5 +31,14 @@ export class OrderController {
     const orderHistory = await this.orderService.getOrderHistory(getOrderDto.email, getOrderDto.collection);
     this.logger.log(`Retrieved order history for ${getOrderDto.email}`);
     return orderHistory;
+  }
+
+  @Get('statistics') // Route will be /api/order/statistics?collection=...
+  @HttpCode(HttpStatus.OK)
+  async getAllOrdersStatistics(@Query('collection') collection: string) {
+    this.logger.log(`GET /order/statistics - collection: ${collection}`);
+    const statistics = await this.orderService.getAllOrdersStatistics(collection);
+    this.logger.log(`Retrieved statistics for all orders from collection: ${collection}`);
+    return statistics;
   }
 }

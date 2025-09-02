@@ -11,5 +11,6 @@ import { OrderService } from './order.service.js';
   ],
   controllers: [OrderController],
   providers: [OrderService],
+  exports: [OrderService], // Exporte o OrderService
 })
 export class OrderModule {}

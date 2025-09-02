@@ -16,7 +16,7 @@ export class OrderService {
     private configService: ConfigService,
   @InjectConnection() private readonly connection: mongoose.Connection,
   ) {
-    const timeout = this.configService.get<number>('ORDER_SUBSCRIPTION_TIMEOUT');
+    const timeout = 305000;
     if (timeout === undefined) {
       throw new Error('orderSubscriptionTimeout is not defined in configuration');
     }
@@ -45,73 +45,129 @@ export class OrderService {
     };
   }
 
-  async getOrderDetails(sdk: ClientSdkType, email:string,orderId: number,uniqueId:string, collection: string): Promise<any> {
-    this.logger.log(`Attempting to get details for order ID: ${orderId}`);
-    const numericOrderId =orderId;
+  async waitForOrderDetails(
+    sdk: ClientSdkType,
+    email: string,
+    orderId: number,
+    uniqueId: string,
+  ): Promise<any> {
+    this.logger.log(
+      `Waiting for order details: ID ${orderId}, UniqueID: ${uniqueId}`,
+    );
+    const numericOrderId = orderId;
     if (isNaN(numericOrderId)) {
-        throw new NotFoundException(`Order ID "${orderId}" is not a valid number.`);
+      throw new NotFoundException(
+        `Order ID "${orderId}" is not a valid number.`,
+      );
     }
 
- 
-  const { InstrumentType } = await import('@quadcode-tech/client-sdk-js');
+    const { InstrumentType } = await import('@quadcode-tech/client-sdk-js');
 
-  const orderResultModel = this.connection.model(collection, OrderResultSchema, collection);
     return new Promise(async (resolve, reject) => {
-      let subscription; 
+      let subscription;
       let timeoutId;
 
       try {
         const positions = await sdk.positions();
 
         timeoutId = setTimeout(() => {
-          if (subscription && typeof subscription.unsubscribe === 'function') {
-            subscription.unsubscribe();
-          }
-          this.logger.warn(`Timeout reached waiting for order update for ID: ${orderId}, email: ${email}, uniqueId: ${uniqueId}`);
-          reject(new RequestTimeoutException(`Timeout: Não foi possível obter o status final da ordem "${orderId}" dentro do tempo limite.`));
+          subscription?.unsubscribe();
+          this.logger.warn(
+            `Timeout waiting for order update: ID ${orderId}, UniqueID: ${uniqueId}`,
+          );
+          reject(
+            new RequestTimeoutException(
+              `Timeout: Could not get final order status for "${orderId}" within the time limit.`,
+            ),
+          );
         }, this.subscriptionTimeout);
 
-        this.logger.log(`Trading for order ID: ${orderId}, email: ${email}, uniqueId: ${uniqueId}`);
-
-        subscription = positions.subscribeOnUpdatePosition((position: PositionSdkType) => {
-          //this.logger.debug(`Received position update: ID ${position.internalId}, Status ${position.status}, Order IDs ${position.orderIds}`);
-          
-          if (
-            position.instrumentType === InstrumentType.DigitalOption && 
-            Array.isArray(position.orderIds) &&
-            position.status === 'closed' && 
-            position.orderIds.includes(numericOrderId)
-          ) {
-            this.logger.log(`Order ID ${numericOrderId} is closed for email ${email}. Processing position update.`);
-            clearTimeout(timeoutId); 
-            if (subscription && typeof subscription.unsubscribe === 'function') {
-              subscription.unsubscribe(); 
-            }
-            const payload = this.cleanPositionPayload(position);
-            orderResultModel
-              .create({ email: email, orderId: numericOrderId, payload, uniqueId: uniqueId })
-              .catch(err =>
-                this.logger.error(
-                  `Failed to store order result: ${err instanceof Error ? err.message : String(err)}`,
-                ),
+        subscription = positions.subscribeOnUpdatePosition(
+          (position: PositionSdkType) => {
+            if (
+              position.instrumentType === InstrumentType.DigitalOption &&
+              Array.isArray(position.orderIds) &&
+              position.status === 'closed' &&
+              position.orderIds.includes(numericOrderId)
+            ) {
+              this.logger.log(
+                `Order ID ${numericOrderId} for email ${email} is closed.`,
               );
-            resolve(payload);
-            
-          }
-        });
-       
-
+              clearTimeout(timeoutId);
+              subscription?.unsubscribe();
+              const payload = this.cleanPositionPayload(position);
+              resolve(payload); // Apenas resolve com o payload
+            }
+          },
+        );
       } catch (error) {
         clearTimeout(timeoutId);
-        if (subscription && typeof subscription.unsubscribe === 'function') {
-          subscription.unsubscribe();
-        }
-        this.logger.error(`Error subscribing or fetching order details for ID "${orderId}": ${error.message}`, error.stack);
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        reject(new InternalServerErrorException(`Erro ao obter detalhes da ordem: ${errorMessage}`));
+        subscription?.unsubscribe();
+        this.logger.error(
+          `Error waiting for order details: ID "${orderId}": ${error.message}`,
+          error.stack,
+        );
+        reject(
+          new InternalServerErrorException(
+            `Error getting order details: ${error.message}`,
+          ),
+        );
       }
     });
   }
+
+  /**
+   * Salva o resultado de uma ordem no banco de dados.
+   */
+  async saveOrderResult(
+    email: string,
+    orderId: number,
+    uniqueId: string,
+    collection: string,
+    payload: any,
+  ): Promise<void> {
+    try {
+      const orderResultModel = this.connection.model(
+        collection,
+        OrderResultSchema,
+        collection,
+      );
+      await orderResultModel.create({
+        email,
+        orderId,
+        payload,
+        uniqueId,
+      });
+      this.logger.log(`Stored order result for ID: ${orderId}, UniqueID: ${uniqueId}`);
+    } catch (err) {
+      this.logger.error(`Failed to store order result: ${err.message}`);
+    }
+  }
+
+  // Método original mantido para compatibilidade com o OrderController
+  async getOrderDetails(
+    sdk: ClientSdkType,
+    email: string,
+    orderId: number,
+    uniqueId: string,
+    collection: string,
+  ): Promise<any> {
+    const orderResult = await this.waitForOrderDetails(
+      sdk,
+      email,
+      orderId,
+      uniqueId,
+    );
+    await this.saveOrderResult(
+      email,
+      orderId,
+      uniqueId,
+      collection,
+      orderResult,
+    );
+    return orderResult;
+  }
+
 
   async getOrderHistory(email: string, collection: string) {
     const orderResultModel = this.connection.model(collection, OrderResultSchema, collection);
@@ -157,6 +213,99 @@ export class OrderService {
     });
 
     return processed;
+  }
+
+  async getAllOrdersStatistics(collection: string) {
+    try {
+      const orderResultModel = this.connection.model(collection, OrderResultSchema, collection);
+      
+      type LeanOrderResult = {
+        _id: any;
+        __v: number;
+        uniqueId?: string;
+        email: string;
+        orderId: number;
+        payload?: Record<string, any>;
+      };
+      
+      // Busca todos os resultados de todos os emails
+      const results = await orderResultModel.find({}).lean<LeanOrderResult[]>().exec();
+
+      // Agrupa por uniqueId
+      const grouped = results.reduce((acc, curr) => {
+        const key = curr.uniqueId || 'no-unique-id';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(curr);
+        return acc;
+      }, {} as Record<string, LeanOrderResult[]>);
+
+      // Para cada grupo, soma pnl e invest
+      const processed = Object.entries(grouped).map(([uniqueId, group]) => {
+        const sumPnl = group.reduce((sum, item) => sum + Number(item.payload?.pnl ?? 0), 0);
+        const sumInvest = group.reduce((sum, item) => sum + Number(item.payload?.invest ?? 0), 0);
+
+        return {
+          uniqueId,
+          email: group[0].email,
+          totalOrders: group.length,
+          totalPnl: sumPnl,
+          totalInvest: sumInvest,
+        };
+      });
+
+      // Calcula estatísticas dos ativos
+      const assetStats = new Map<string, { id: number; name: string; isOtc: boolean; wins: number; total: number }>();
+      
+      results.forEach(item => {
+        if (item.payload?.active) {
+          const active = item.payload.active;
+          const key = `${active.id}-${active.name}`;
+          const pnl = Number(item.payload.pnl ?? 0);
+          
+          if (!assetStats.has(key)) {
+            assetStats.set(key, {
+              id: active.id,
+              name: active.name,
+              isOtc: active.isOtc,
+              wins: 0,
+              total: 0
+            });
+          }
+          
+          const stats = assetStats.get(key)!;
+          stats.total += 1;
+          if (pnl > 0) {
+            stats.wins += 1;
+          }
+        }
+      });
+
+      // Converte Map para array com assertividade
+      const assetsWithAccuracy = Array.from(assetStats.values()).map(asset => ({
+        id: asset.id,
+        name: asset.name,
+        isOtc: asset.isOtc,
+        totalTrades: asset.total,
+        winRate: asset.total > 0 ? (asset.wins / asset.total) * 100 : 0
+      }));
+
+      // Calcula estatísticas gerais
+      const totalOrders = processed.length;
+      const totalPnl = processed.reduce((sum, item) => sum + item.totalPnl, 0);
+      const totalInvest = processed.reduce((sum, item) => sum + item.totalInvest, 0);
+
+      return {
+        summary: {
+          totalOrders,
+          totalPnl,
+          totalInvest,
+        },
+        assets: assetsWithAccuracy
+      };
+    } catch (error) {
+      this.logger.error(`Error fetching all orders statistics: ${error.message}`, error.stack);
+      throw new InternalServerErrorException(`Erro ao obter estatísticas de todas as ordens: ${error.message}`);
+    }
   }
 
 }
