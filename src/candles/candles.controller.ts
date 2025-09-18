@@ -24,9 +24,9 @@ export class CandlesController {
   @Get()
   @HttpCode(HttpStatus.OK)
   async getCandles(@Query() query: GetCandlesDto) {
-    this.logger.log(
-      `GET /candles - email: ${query.email}, pair: ${query.pair}`,
-    );
+    // this.logger.log(
+    //   `GET /candles - email: ${query.email}, pair: ${query.pair}`,
+    // );
     const sdk = await this.sdkService.getSdk(query.email, query.password);
     return this.candlesService.getCandles(sdk, query.pair, query.period);
   }
