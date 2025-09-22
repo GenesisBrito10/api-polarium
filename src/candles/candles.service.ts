@@ -11,12 +11,12 @@ export class CandlesService {
   private readonly logger = new Logger(CandlesService.name);
 
   private async findActiveByName(sdk: ClientSdkType, pair: string) {
-    const digitalActives = await sdk
-      .digitalOptions()
-      .then((b) => b.getUnderlyingsAvailableForTradingAt(new Date()))
+    const binaryActives = await sdk
+      .binaryOptions()
+      .then((b) => b.getActives())
       .catch(() => []);
 
-    return digitalActives.find((a: any) => a.name === pair);
+    return binaryActives.find((a: any) => a.ticker === pair);
   }
 
   async getCandles(sdk: ClientSdkType, pair: string, period: number) {
